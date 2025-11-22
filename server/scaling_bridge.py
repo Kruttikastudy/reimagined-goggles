@@ -11,7 +11,7 @@ from typing import Dict, Any, Optional
 # Re-use ranges from DataQualityAgent for consistency
 # In a real app, these might be shared in a config file
 PHYSIO_RANGES = {
-    "age": (0, 120), "bmi": (8, 80), "glucose": (30, 1000),
+    "age": (0, 120), "bmi": (8, 80), "glucose": (70, 140),
     "blood_pressure_systolic": (50, 300), "blood_pressure_diastolic": (30, 200),
     "cholesterol_total": (50, 1000), "ldl_cholesterol": (10, 1000),
     "hdl_cholesterol": (5, 200), "triglycerides": (5, 2000),

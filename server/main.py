@@ -8,6 +8,14 @@ import datetime
 import logging
 import os
 from dotenv import load_dotenv
+import joblib
+from scipy.special import expit
+import pandas as pd
+
+CATBOOST_MODEL_PATH = r"C:\Users\ketak\OneDrive\Desktop\Projects\Code-Blooded_Redact\mediguard_catboost_scaled (1).pkl"
+catboost_model = joblib.load(CATBOOST_MODEL_PATH)
+
+LABEL_MAP = {0: 'Anemia', 1: 'Diabetes', 2: 'Healthy', 3: 'Thalasse', 4: 'Thromboc'}
 
 # Import Agents
 from intake_extraction_agent import IntakeExtractionAgent
@@ -104,16 +112,62 @@ def analyze_symptoms(request: AnalysisRequest):
         # Calculate a simple health score based on scaled features
         # Higher score = Better health (inverse of risk)
         # This is just a heuristic for demo purposes
-        risk_factors = 0
-        if scaled_features.get("bmi", 0) > 0.5: risk_factors += 1
-        if scaled_features.get("glucose", 0) > 0.5: risk_factors += 1
-        if scaled_features.get("blood_pressure_systolic", 0) > 0.5: risk_factors += 1
-        
-        health_score = max(10, 100 - (risk_factors * 15))
-        
+        # --- Step 4: CatBoost ML Prediction ---
+
+        # Convert scaled features to DataFrame (make sure the keys match training features)
+        feature_order = [
+            'Glucose','Cholesterol','Hemoglobin','Platelets','White Blood Cells',
+            'Red Blood Cells','Hematocrit','Mean Corpuscular Volume','Mean Corpuscular Hemoglobin',
+            'Mean Corpuscular Hemoglobin Concentration','Insulin','BMI','Systolic Blood Pressure',
+            'Diastolic Blood Pressure','Triglycerides','HbA1c','LDL Cholesterol','HDL Cholesterol',
+            'ALT','AST','Heart Rate','Creatinine','Troponin','C-reactive Protein'
+        ]
+
+        feature_key_map = {
+            'Glucose': 'glucose',
+            'Cholesterol': 'cholesterol',
+            'Hemoglobin': 'hemoglobin',
+            'Platelets': 'platelets',
+            'White Blood Cells': 'white_blood_cells',
+            'Red Blood Cells': 'red_blood_cells',
+            'Hematocrit': 'hematocrit',
+            'Mean Corpuscular Volume': 'mean_corpuscular_volume',
+            'Mean Corpuscular Hemoglobin': 'mean_corpuscular_hemoglobin',
+            'Mean Corpuscular Hemoglobin Concentration': 'mean_corpuscular_hemoglobin_concentration',
+            'Insulin': 'insulin',
+            'BMI': 'bmi',
+            'Systolic Blood Pressure': 'blood_pressure_systolic',
+            'Diastolic Blood Pressure': 'blood_pressure_diastolic',
+            'Triglycerides': 'triglycerides',
+            'HbA1c': 'hba1c',
+            'LDL Cholesterol': 'ldl_cholesterol',
+            'HDL Cholesterol': 'hdl_cholesterol',
+            'ALT': 'alt',
+            'AST': 'ast',
+            'Heart Rate': 'heart_rate',
+            'Creatinine': 'creatinine',
+            'Troponin': 'troponin',
+            'C-reactive Protein': 'c_reactive_protein'
+        }
+
+        # Build a single-row DataFrame
+        input_df = pd.DataFrame([[scaled_features.get(feature_key_map[f], 0) for f in feature_order]], columns=feature_order)
+
+        # Predict raw logits
+        raw_logits = catboost_model.predict(input_df, prediction_type='RawFormulaVal')
+
+        # Convert logits to independent probabilities
+        predictions = {LABEL_MAP[c]: float(expit(raw_logits[0][c])) for c in range(len(LABEL_MAP))}
+
+        # Optional: pick the highest probability class
+        predicted_class = max(predictions, key=predictions.get)
+
+        health_score = round(predictions.get('Healthy', 0) * 100)  # example: use 'Healthy' probability as score
+
         triage_category = "Green"
         if health_score < 60: triage_category = "Red"
         elif health_score < 80: triage_category = "Yellow"
+
 
         result = {
             "analysis": {
@@ -122,9 +176,12 @@ def analyze_symptoms(request: AnalysisRequest):
                 "features": clean_features,
                 "scaled_features": scaled_features,
                 "quality_report": quality_report,
-                "warnings": unified_data["warnings"] + quality_report["warnings"]
+                "warnings": unified_data["warnings"] + quality_report["warnings"],
+                "predictions": predictions,
+                "predicted_class": predicted_class
             }
         }
+
 
         # --- Step 5: Blockchain Log ---
         log_entry = {

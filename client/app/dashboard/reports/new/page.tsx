@@ -38,8 +38,6 @@ export default function AddReportPage() {
         vitals: {} as Record<string, string>
     });
 
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
     const analysisSteps = [
         "Extracting data from inputs...",
         "Validating vital signs...",
@@ -76,7 +74,7 @@ export default function AddReportPage() {
         }, 1500);
 
         try {
-            const response = await fetch(`http://127.0.0.1:8000/api/analyze`, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analyze`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -348,140 +346,92 @@ export default function AddReportPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Left Column: Form */}
                     <div className="lg:col-span-2 space-y-6">
-                        {activeTab === 'manual' ? (
-                            <>
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                                    <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                                        <User size={20} className="text-blue-600" /> Patient Demographics
-                                    </h2>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
-                                            <input
-                                                type="text"
-                                                value={formData.name}
-                                                onChange={(e) => handleInputChange('name', e.target.value)}
-                                                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                                                placeholder="John Doe"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Age</label>
-                                            <input
-                                                type="number"
-                                                value={formData.age}
-                                                onChange={(e) => handleInputChange('age', e.target.value)}
-                                                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                                                placeholder="45"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Gender</label>
-                                            <select
-                                                value={formData.gender}
-                                                onChange={(e) => handleInputChange('gender', e.target.value)}
-                                                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
-                                            >
-                                                <option>Male</option>
-                                                <option>Female</option>
-                                                <option>Other</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
-                                            <input
-                                                type="date"
-                                                value={formData.date}
-                                                onChange={(e) => handleInputChange('date', e.target.value)}
-                                                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                                    <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                                        <Activity size={20} className="text-blue-600" /> Vitals & Markers
-                                    </h2>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {vitalsList.map((vital, index) => (
-                                            <div key={index}>
-                                                <label className="block text-xs font-medium text-slate-500 mb-1 uppercase tracking-wider">{vital}</label>
-                                                <input
-                                                    type="text"
-                                                    value={formData.vitals[vital] || ''}
-                                                    onChange={(e) => handleVitalChange(vital, e.target.value)}
-                                                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                                                    placeholder="--"
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                                    <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                                        <FileText size={20} className="text-blue-600" /> Clinical Notes
-                                    </h2>
-                                    <textarea
-                                        value={formData.observations}
-                                        onChange={(e) => handleInputChange('observations', e.target.value)}
-                                        className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all h-32 resize-none"
-                                        placeholder="Enter any additional observations, symptoms, or patient history..."
-                                    />
-                                </div>
-                            </>
-                        ) : (
-                            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center">
-                                <div className="border-2 border-dashed border-slate-200 rounded-xl p-12 flex flex-col items-center justify-center transition-colors hover:border-blue-400 hover:bg-blue-50/50">
-                                    <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-4">
-                                        <Upload size={32} />
-                                    </div>
-                                    <h3 className="text-xl font-semibold text-slate-900 mb-2">Upload Medical Report</h3>
-                                    <p className="text-slate-500 mb-6 max-w-md">
-                                        Drag and drop your PDF medical report here, or click to browse files.
-                                        We support PDF, JPG, and PNG formats.
-                                    </p>
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                            <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                                <User size={20} className="text-blue-600" /> Patient Demographics
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
                                     <input
-                                        type="file"
-                                        accept=".pdf,.jpg,.jpeg,.png"
-                                        className="hidden"
-                                        id="file-upload"
-                                        onChange={(e) => {
-                                            const file = e.target.files?.[0];
-                                            if (file) setSelectedFile(file);
-                                        }}
+                                        type="text"
+                                        value={formData.name}
+                                        onChange={(e) => handleInputChange('name', e.target.value)}
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                        placeholder="John Doe"
                                     />
-                                    <label
-                                        htmlFor="file-upload"
-                                        className="px-6 py-3 bg-white border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all cursor-pointer shadow-sm"
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Age</label>
+                                    <input
+                                        type="number"
+                                        value={formData.age}
+                                        onChange={(e) => handleInputChange('age', e.target.value)}
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                        placeholder="45"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Gender</label>
+                                    <select
+                                        value={formData.gender}
+                                        onChange={(e) => handleInputChange('gender', e.target.value)}
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
                                     >
-                                        Select File
-                                    </label>
-                                    {selectedFile && (
-                                        <div className="mt-6 flex items-center gap-3 bg-blue-50 text-blue-700 px-4 py-3 rounded-lg">
-                                            <FileText size={20} />
-                                            <span className="font-medium">{selectedFile.name}</span>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault();
-                                                    setSelectedFile(null);
-                                                }}
-                                                className="ml-2 hover:text-blue-900"
-                                            >
-                                                ×
-                                            </button>
-                                        </div>
-                                    )}
+                                        <option>Male</option>
+                                        <option>Female</option>
+                                        <option>Other</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
+                                    <input
+                                        type="date"
+                                        value={formData.date}
+                                        onChange={(e) => handleInputChange('date', e.target.value)}
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                    />
                                 </div>
                             </div>
-                        )}
+                        </div>
+
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                            <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                                <Activity size={20} className="text-blue-600" /> Vitals & Markers
+                            </h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {vitalsList.map((vital, index) => (
+                                    <div key={index}>
+                                        <label className="block text-xs font-medium text-slate-500 mb-1 uppercase tracking-wider">{vital}</label>
+                                        <input
+                                            type="text"
+                                            value={formData.vitals[vital] || ''}
+                                            onChange={(e) => handleVitalChange(vital, e.target.value)}
+                                            className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                                            placeholder="--"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                            <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                                <FileText size={20} className="text-blue-600" /> Clinical Notes
+                            </h2>
+                            <textarea
+                                value={formData.observations}
+                                onChange={(e) => handleInputChange('observations', e.target.value)}
+                                className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all h-32 resize-none"
+                                placeholder="Enter any additional observations, symptoms, or patient history..."
+                            />
+                        </div>
 
                         <NeonButton
                             variant="blue"
                             fullWidth
                             onClick={handleAnalyze}
-                            disabled={isAnalyzing || (activeTab === 'upload' && !selectedFile)}
+                            disabled={isAnalyzing}
                             className="py-4 text-lg font-semibold shadow-blue-500/20"
                         >
                             {isAnalyzing ? (

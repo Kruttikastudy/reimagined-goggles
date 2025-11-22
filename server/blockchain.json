@@ -1,0 +1,13 @@
+[
+  {
+    "index": 1,
+    "timestamp": "2025-11-22T12:46:37.972045",
+    "data": {
+      "type": "ANALYSIS_RESULT",
+      "health_score": 66,
+      "triage": "Moderate Risk"
+    },
+    "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "hash": "8dbf1b227f826cb96b550b729e42ecbedec0278e6d5e83e5f33e63ae770ef41a"
+  }
+]

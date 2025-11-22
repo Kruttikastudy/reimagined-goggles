@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+@theme {
+  --color-glass-100: rgba(255, 255, 255, 0.7);
+  --color-glass-200: rgba(255, 255, 255, 0.8);
+  --color-glass-300: rgba(255, 255, 255, 0.9);
+
+  --color-neon-blue: #00f3ff;
+  --color-neon-purple: #bc13fe;
+  --color-neon-green: #0aff68;
+  --color-neon-pink: #ff00d4;
+
+  --color-pastel-mint: #e0f7fa;
+  --color-pastel-lavender: #f3e5f5;
+  --color-pastel-peach: #fbe9e7;
+  --color-pastel-sky: #e1f5fe;
+
+  --shadow-neon-blue: 0 0 10px rgba(0, 243, 255, 0.5), 0 0 20px rgba(0, 243, 255, 0.3);
+  --shadow-neon-purple: 0 0 10px rgba(188, 19, 254, 0.5), 0 0 20px rgba(188, 19, 254, 0.3);
+  --shadow-glass: 0 4px 20px 0 rgba(0, 0, 0, 0.05);
+
+  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-float: float 6s ease-in-out infinite;
+
+  @keyframes float {
+
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+}
+
+:root {
+  --background: #f8fafc;
+  /* Slate 50 */
+  --foreground: #0f172a;
+  /* Slate 900 */
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+@utility glass-card {
+  @apply bg-white border border-slate-200 shadow-glass rounded-2xl;
+}
+
+@utility glass-panel {
+  @apply bg-white border-l border-slate-200;
+}
+
+@utility text-neon-blue {
+  color: #00b4d8;
+  /* Darker blue for readability on white */
+  text-shadow: 0 0 1px rgba(0, 243, 255, 0.5);
+}
+
+@utility text-neon-purple {
+  color: #9d4edd;
+  /* Darker purple for readability on white */
+  text-shadow: 0 0 1px rgba(188, 19, 254, 0.5);
+}
+
+/* Container utility for consistent padding */
+@utility container-responsive {
+  @apply container mx-auto px-4 md:px-8 lg:px-12;
+}

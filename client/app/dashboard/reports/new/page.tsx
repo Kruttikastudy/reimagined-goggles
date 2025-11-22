@@ -73,15 +73,18 @@ export default function AddReportPage() {
             setAnalysisStep(prev => (prev < 4 ? prev + 1 : prev));
         }, 1500);
 
-        try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analyze`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    text: textPayload,
-                    mode: activeTab === 'manual' ? 'text' : 'pdf'
-                })
-            });
+    try {
+    console.log("API URL:", process.env.NEXT_PUBLIC_API_URL);
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            text: textPayload,
+            mode: activeTab === 'manual' ? 'text' : 'pdf'
+        })
+    });
+
 
             if (!response.ok) {
                 throw new Error(`Server error: ${response.status}`);

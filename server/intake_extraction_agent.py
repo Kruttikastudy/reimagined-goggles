@@ -142,6 +142,7 @@ class IntakeExtractionAgent:
         else:
             self.model = None
             logger.warning("No GEMINI_API_KEY found. Using regex fallback only.")
+        logger.info(f"IntakeExtractionAgent initialized. Gemini available: {self.model is not None}")
 
     def extract_from_text(self, raw_text: str) -> Dict[str, Any]:
         """Extract features from raw text using Gemini + Regex."""
@@ -185,7 +186,12 @@ class IntakeExtractionAgent:
 
     def extract_from_pdf(self, pdf_path: str) -> Dict[str, Any]:
         """Extract features from PDF."""
+        logger.info(f"Extracting text from PDF: {pdf_path}")
         text = extract_text_from_pdf(pdf_path)
+        logger.info(f"Extracted text length: {len(text)}")
+        if len(text) < 100:
+            logger.warning(f"Extracted text is very short: {text}")
+        
         result = self.extract_from_text(text)
         result["mode"] = "PDF_MODE"
         return result

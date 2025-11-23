@@ -651,6 +651,95 @@ def get_reports_stats(session: Session = Depends(get_session)):
         logger.error(f"Failed to calculate stats: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/blockchain")
+def get_blockchain_view(limit: Optional[int] = 100, offset: Optional[int] = 0):
+    """
+    View the blockchain audit trail.
+    Returns recent blocks in reverse chronological order (newest first).
+    """
+    try:
+        chain = load_blockchain()
+        
+        # Reverse to show newest first, then apply pagination
+        reversed_chain = list(reversed(chain))
+        paginated_blocks = reversed_chain[offset:offset + limit]
+        
+        return {
+            "blocks": paginated_blocks,
+            "total_blocks": len(chain),
+            "showing": len(paginated_blocks),
+            "offset": offset
+        }
+    except Exception as e:
+        logger.error(f"Failed to load blockchain: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/blockchain/verify")
+def verify_blockchain_integrity():
+    """
+    Verify the integrity of the blockchain.
+    Checks that all hashes are valid and blocks are properly linked.
+    """
+    try:
+        chain = load_blockchain()
+        
+        if not chain:
+            return {"valid": True, "message": "Blockchain is empty", "total_blocks": 0}
+        
+        for i, block in enumerate(chain):
+            # Verify hash matches data
+            expected_hash = hashlib.sha256(
+                json.dumps(block["data"], sort_keys=True).encode()
+            ).hexdigest()
+            
+            if block["hash"] != expected_hash:
+                return {
+                    "valid": False,
+                    "error": f"Block {block['index']} has corrupted hash",
+                    "block_index": block["index"]
+                }
+            
+            # Verify chain linkage (except genesis block)
+            if i > 0:
+                if block["prev_hash"] != chain[i-1]["hash"]:
+                    return {
+                        "valid": False,
+                        "error": f"Block {block['index']} has broken chain link",
+                        "block_index": block["index"]
+                    }
+        
+        return {
+            "valid": True,
+            "message": "Blockchain integrity verified ✓",
+            "total_blocks": len(chain),
+            "first_block": chain[0]["timestamp"] if chain else None,
+            "last_block": chain[-1]["timestamp"] if chain else None
+        }
+        
+    except Exception as e:
+        logger.error(f"Blockchain verification failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/blockchain/block/{block_index}")
+def get_blockchain_block_by_index(block_index: int):
+    """Get a specific block by its index."""
+    try:
+        chain = load_blockchain()
+        
+        # Find block with matching index
+        block = next((b for b in chain if b["index"] == block_index), None)
+        
+        if not block:
+            raise HTTPException(status_code=404, detail=f"Block {block_index} not found")
+        
+        return block
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch block: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

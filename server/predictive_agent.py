@@ -85,38 +85,85 @@ class PredictiveAgent:
             # Calculate SHAP values
             shap_values = explainer.shap_values(input_df)
             
+            logger.info(f"SHAP values type: {type(shap_values)}")
+            logger.info(f"SHAP values shape: {shap_values.shape if hasattr(shap_values, 'shape') else 'N/A'}")
+            
             # For multiclass, shap_values is a list of arrays (one for each class)
             # We want the values for the predicted class
             if isinstance(shap_values, list):
                 class_shap_values = shap_values[predicted_class_idx]
+                logger.info(f"Using class {predicted_class_idx}, shape: {class_shap_values.shape}")
             else:
                 class_shap_values = shap_values # Binary case
+                logger.info(f"Binary classification, shape: {class_shap_values.shape}")
                 
             # Get the values for the single instance (row 0)
             instance_values = class_shap_values[0]
             feature_names = input_df.columns.tolist()
             
+            logger.info(f"Instance values type: {type(instance_values)}, length: {len(instance_values)}")
+            
             # Create a list of (feature, value) tuples
-            feature_importance = [
-                {"feature": feature_names[i], "impact": float(instance_values[i]), "value": float(input_df.iloc[0, i])}
-                for i in range(len(feature_names))
-            ]
+            feature_importance = []
+            for i in range(len(feature_names)):
+                try:
+                    # Convert to Python native types using multiple methods
+                    val = instance_values[i]
+                    
+                    # Try different conversion methods
+                    if hasattr(val, 'item'):
+                        impact = float(val.item())
+                    elif isinstance(val, (int, float)):
+                        impact = float(val)
+                    else:
+                        impact = float(np.asarray(val).item())
+                    
+                    feature_value = float(input_df.iloc[0, i])
+                    
+                    feature_importance.append({
+                        "feature": feature_names[i],
+                        "impact": impact,
+                        "value": feature_value
+                    })
+                except Exception as e:
+                    logger.error(f"Failed to process feature {feature_names[i]} at index {i}: {e}, value type: {type(instance_values[i])}")
+                    continue
+            
+            logger.info(f"Successfully processed {len(feature_importance)} features")
             
             # Sort by absolute impact to find most important features
             feature_importance.sort(key=lambda x: abs(x["impact"]), reverse=True)
             
-            # Separate into positive (pushing towards class) and negative (pushing away)
-            # Note: "Positive" impact means it makes the predicted class MORE likely.
-            top_features = feature_importance[:5] # Top 5 most impactful features
+            # Top 5 most impactful features
+            top_features = feature_importance[:5]
+            
+            # Extract base value safely
+            try:
+                if hasattr(explainer.expected_value, '__getitem__'):
+                    base_val = explainer.expected_value[predicted_class_idx]
+                else:
+                    base_val = explainer.expected_value
+                    
+                if hasattr(base_val, 'item'):
+                    base_value = float(base_val.item())
+                elif isinstance(base_val, (int, float)):
+                    base_value = float(base_val)
+                else:
+                    base_value = float(np.asarray(base_val).item())
+            except Exception as e:
+                logger.error(f"Failed to extract base value: {e}")
+                base_value = 0.0
+            
+            logger.info(f"Returning {len(top_features)} top features")
             
             return {
                 "top_features": top_features,
-                "base_value": float(explainer.expected_value[predicted_class_idx]) if isinstance(explainer.expected_value, list) else float(explainer.expected_value)
+                "base_value": base_value
             }
             
         except Exception as e:
-            logger.error(f"SHAP explanation failed: {e}")
-            return {"error": str(e)}
+            logger.error(f"SHAP explanation failed: {e}", exc_info=True)
+            return {"error": str(e), "top_features": [], "base_value": 0.0}
 
     def _get_mock_predictions(self) -> Dict[str, Any]:
         """Fallback mock data if API fails."""

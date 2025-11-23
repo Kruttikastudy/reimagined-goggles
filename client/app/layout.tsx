@@ -29,6 +29,9 @@ export default function RootLayout({
         suppressHydrationWarning={true}
       >
         {children}
+        <script async type='module' src='https://interfaces.zapier.com/assets/web-components/zapier-interfaces/zapier-interfaces.esm.js'></script>
+        {/* @ts-ignore */}
+        <zapier-interfaces-chatbot-embed is-popup='true' chatbot-id='cmi9z99vh002xz7qjvi5clwvq'></zapier-interfaces-chatbot-embed>
       </body>
     </html>
   );

@@ -463,11 +463,15 @@ def verify_passport(passport_id: str, token: str, session: Session = Depends(get
     return passport_manager.verify_passport(passport_id, token, session)
 
 @app.get("/api/reports")
-def get_reports(session: Session = Depends(get_session)):
-    """Fetch all reports, ordered by most recent first."""
-    logger.info("Fetching all reports")
+def get_reports(patient_id: Optional[str] = None, session: Session = Depends(get_session)):
+    """Fetch reports, optionally filtered by patient_id, ordered by most recent first."""
+    logger.info(f"Fetching reports. Patient ID: {patient_id}")
     try:
-        reports = session.exec(select(PatientReport).order_by(PatientReport.created_at.desc())).all()
+        query = select(PatientReport).order_by(PatientReport.created_at.desc())
+        if patient_id:
+            query = query.where(PatientReport.patient_id == patient_id)
+            
+        reports = session.exec(query).all()
         
         # Convert to dict format
         reports_list = []

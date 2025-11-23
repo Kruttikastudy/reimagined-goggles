@@ -9,9 +9,8 @@ import logging
 import os
 from dotenv import load_dotenv
 import joblib
-import numpy as np
-from scipy.special import expit
 import pandas as pd
+import numpy as np
 from sqlmodel import Session, select
 from passlib.context import CryptContext
 import bcrypt
@@ -312,10 +311,27 @@ async def analyze_symptoms(
         # Predict raw logits
         raw_logits = catboost_model.predict(input_df, prediction_type='RawFormulaVal')
 
-        # Convert logits to independent probabilities
-        predictions = {LABEL_MAP[c]: float(expit(raw_logits[0][c])) for c in range(len(LABEL_MAP))}
+        # Convert logits to probabilities using SOFTMAX (for multiclass)
+        # This ensures probabilities sum to 1 and are mutually exclusive
+        logits_array = np.array(raw_logits[0])
+        exp_logits = np.exp(logits_array - np.max(logits_array))  # Subtract max for numerical stability
+        softmax_probs = exp_logits / exp_logits.sum()
+        
+        all_predictions = {LABEL_MAP[c]: float(softmax_probs[c]) for c in range(len(LABEL_MAP))}
+        
+        # FILTER OUT "Healthy" class since it wasn't trained well
+        # Keep only disease classes: Anemia, Diabetes, Thalasse, Thromboc
+        disease_predictions = {k: v for k, v in all_predictions.items() if k != 'Healthy'}
+        
+        # Renormalize disease probabilities to sum to 1
+        total_disease_prob = sum(disease_predictions.values())
+        if total_disease_prob > 0:
+            predictions = {k: v / total_disease_prob for k, v in disease_predictions.items()}
+        else:
+            # Fallback if somehow all disease probs are 0
+            predictions = disease_predictions
 
-        # Optional: pick the highest probability class
+        # Pick the highest probability disease class
         predicted_class = max(predictions, key=predictions.get)
         
          
@@ -326,7 +342,12 @@ async def analyze_symptoms(
         # Generate SHAP explanation
         explanation = predictive_agent.explain_prediction(catboost_model, input_df, predicted_class_idx)
 
-        health_score = round(predictions.get('Healthy', 0) * 100)  # example: use 'Healthy' probability as score
+        # Calculate health score based on disease probability
+        # Higher disease probability = Lower health score
+        disease_probability = predictions.get(predicted_class, 0)
+        health_score = round((1 - disease_probability) * 100)
+        # Ensure health score is reasonable (between 0-100)
+        health_score = max(0, min(100, health_score))
 
         triage_category = "Green"
         if health_score < 60: triage_category = "Red"
@@ -368,6 +389,7 @@ async def analyze_symptoms(
             health_score=health_score,
             triage_category=triage_category,
             predictions_json=json.dumps(predictions),  # Save disease predictions
+            explanation_json=json.dumps(explanation),  # Save SHAP explanation
             raw_text=text[:500] if text else "PDF Upload",  # Store first 500 chars or PDF label
             features_json=json.dumps(clean_features),
             warnings_json=json.dumps(unified_data["warnings"] + quality_report["warnings"]),
@@ -489,6 +511,35 @@ def get_reports_stats(patient_id: Optional[str] = None, session: Session = Depen
         }
     except Exception as e:
         logger.error(f"Failed to calculate stats: {e}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch report: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/reports/{report_id}")
+def get_report(report_id: int, session: Session = Depends(get_session)):
+    """Fetch a single report by ID with full details."""
+    logger.info(f"Fetching report {report_id}")
+    try:
+        report = session.get(PatientReport, report_id)
+        
+        if not report:
+            raise HTTPException(status_code=404, detail="Report not found")
+        
+        return {
+            "id": report.id,
+            "report_title": report.report_title or f"Report #{report.id}",
+            "patient_name": report.patient_name,
+            "health_score": report.health_score,
+            "triage_category": report.triage_category,
+            "predictions": json.loads(report.predictions_json) if report.predictions_json else {},
+            "explanation": json.loads(report.explanation_json) if report.explanation_json else None,
+            "features": json.loads(report.features_json) if report.features_json else {},
+            "warnings": json.loads(report.warnings_json) if report.warnings_json else [],
+            "created_at": report.created_at.isoformat(),
+            "blockchain_hash": report.blockchain_hash
+        }
     except HTTPException:
         raise
     except Exception as e:

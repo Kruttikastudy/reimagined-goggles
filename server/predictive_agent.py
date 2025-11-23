@@ -88,20 +88,27 @@ class PredictiveAgent:
             logger.info(f"SHAP values type: {type(shap_values)}")
             logger.info(f"SHAP values shape: {shap_values.shape if hasattr(shap_values, 'shape') else 'N/A'}")
             
-            # For multiclass, shap_values is a list of arrays (one for each class)
+            # For CatBoost multiclass, shap_values is a 3D array: (n_samples, n_features, n_classes)
             # We want the values for the predicted class
             if isinstance(shap_values, list):
+                # Old format: list of arrays, one per class
                 class_shap_values = shap_values[predicted_class_idx]
                 logger.info(f"Using class {predicted_class_idx}, shape: {class_shap_values.shape}")
+            elif len(shap_values.shape) == 3:
+                # 3D array: (samples, features, classes) - extract for predicted class
+                class_shap_values = shap_values[0, :, predicted_class_idx]  # Get all features for sample 0, class idx
+                logger.info(f"3D array - extracted class {predicted_class_idx}, shape: {class_shap_values.shape}")
             else:
-                class_shap_values = shap_values # Binary case
+                # 2D array: binary classification
+                class_shap_values = shap_values[0]  # Just get first sample
                 logger.info(f"Binary classification, shape: {class_shap_values.shape}")
                 
-            # Get the values for the single instance (row 0)
-            instance_values = class_shap_values[0]
+            # Get the values for the single instance
+            # class_shap_values is now a 1D array of length n_features
+            instance_values = class_shap_values
             feature_names = input_df.columns.tolist()
             
-            logger.info(f"Instance values type: {type(instance_values)}, length: {len(instance_values)}")
+            logger.info(f"Instance values type: {type(instance_values)}, shape: {instance_values.shape if hasattr(instance_values, 'shape') else len(instance_values)}")
             
             # Create a list of (feature, value) tuples
             feature_importance = []

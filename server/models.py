@@ -1,4 +1,4 @@
-"""Database models for MediGuard using SQLModel."""
+"""Database models for MediGuard."""
 from sqlmodel import SQLModel, Field
 from typing import Optional
 from datetime import datetime
@@ -8,9 +8,10 @@ class User(SQLModel, table=True):
     """Stores user account information."""
     
     id: Optional[int] = Field(default=None, primary_key=True)
+    patient_id: str = Field(default_factory=lambda: str(uuid.uuid4()), unique=True)  # Unique patient ID
     name: str
-    email: str = Field(unique=True, index=True)  # Unique email for login
-    hashed_password: str  # Never store plain passwords!
+    email: str = Field(unique=True, index=True)
+    password_hash: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     
     class Config:
@@ -22,7 +23,7 @@ class PatientReport(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     
     # User Association
-    user_id: Optional[int] = None  # Link to User.id
+    patient_id: Optional[str] = None  # Link to User.patient_id
     
     # Report Metadata
     report_title: Optional[str] = None  # User-friendly report name

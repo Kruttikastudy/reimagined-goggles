@@ -204,6 +204,9 @@ def analyze_symptoms(request: AnalysisRequest, session: Session = Depends(get_se
         unified_data = intake_agent.unify_features(extraction_result)
         raw_features = unified_data["features"]
         
+        logger.info(f"Received text from frontend: {request.text[:500]}")
+        logger.info(f"Raw extracted features: {raw_features}")
+        
         # KEY MAPPING FIX: Translate IntakeExtractionAgent keys to DataQualityAgent keys
         key_mapping = {
             "blood_pressure_systolic": "systolic_blood_pressure",

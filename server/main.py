@@ -421,11 +421,15 @@ def get_reports(patient_id: Optional[str] = None, session: Session = Depends(get
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/reports/stats")
-def get_reports_stats(session: Session = Depends(get_session)):
-    """Calculate average health score and vitals from all reports."""
-    logger.info("Calculating report statistics")
+def get_reports_stats(patient_id: Optional[str] = None, session: Session = Depends(get_session)):
+    """Calculate average health score and vitals from reports, optionally filtered by patient_id."""
+    logger.info(f"Calculating report statistics. Patient ID: {patient_id}")
     try:
-        reports = session.exec(select(PatientReport)).all()
+        query = select(PatientReport)
+        if patient_id:
+            query = query.where(PatientReport.patient_id == patient_id)
+            
+        reports = session.exec(query).all()
         
         if not reports:
             return {
@@ -440,9 +444,11 @@ def get_reports_stats(session: Session = Depends(get_session)):
         avg_health_score = round(total_health_score / len(reports))
         
         # Get latest predictions
-        latest_report = session.exec(
-            select(PatientReport).order_by(PatientReport.created_at.desc())
-        ).first()
+        latest_query = select(PatientReport).order_by(PatientReport.created_at.desc())
+        if patient_id:
+            latest_query = latest_query.where(PatientReport.patient_id == patient_id)
+            
+        latest_report = session.exec(latest_query).first()
         latest_predictions = json.loads(latest_report.predictions_json) if latest_report and latest_report.predictions_json else {}
         
         # Calculate average vitals
